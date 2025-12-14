@@ -5,7 +5,7 @@ import shap
 import matplotlib.pyplot as plt
 
 # -------------------------------------------------
-# Page config
+# Page configuration
 # -------------------------------------------------
 st.set_page_config(
     page_title="Customer Churn Prediction",
@@ -33,12 +33,12 @@ model, preprocessor = load_artifacts()
 # -------------------------------------------------
 st.title("Customer Churn Prediction")
 st.write(
-    "Predict whether a customer will churn using a trained LightGBM model "
-    "and understand the decision using SHAP explainability."
+    "Predict customer churn using a LightGBM model "
+    "and explain individual predictions using SHAP."
 )
 
 # -------------------------------------------------
-# Load template data (for UI ranges & categories)
+# Load template dataset (for UI consistency)
 # -------------------------------------------------
 @st.cache_data
 def load_template_data():
@@ -59,9 +59,9 @@ template_df = load_template_data()
 feature_cols = [c for c in template_df.columns if c != "Churn"]
 
 # -------------------------------------------------
-# User Inputs
+# Sidebar input
 # -------------------------------------------------
-st.sidebar.header("Customer Features")
+st.sidebar.header("Customer Information")
 
 user_input = {}
 
@@ -85,35 +85,37 @@ input_df = pd.DataFrame([user_input])
 # Apply preprocessing (LabelEncoders)
 # -------------------------------------------------
 categorical_cols = input_df.select_dtypes(include=["object"]).columns
-
 for col in categorical_cols:
     input_df[col] = preprocessor[col].transform(input_df[col])
 
 # -------------------------------------------------
-# Prediction + SHAP
+# Prediction and SHAP explanation
 # -------------------------------------------------
 if st.button("Predict Churn"):
 
-    pred_proba = model.predict_proba(input_df)[:, 1][0]
-    pred_class = model.predict(input_df)[0]
+    # Prediction
+    churn_proba = model.predict_proba(input_df)[:, 1][0]
+    churn_pred = model.predict(input_df)[0]
 
     st.subheader("Prediction Result")
-    st.metric("Churn Probability", f"{pred_proba * 100:.2f}%")
+    st.metric("Churn Probability", f"{churn_proba * 100:.2f}%")
 
-    if pred_class == 1:
+    if churn_pred == 1:
         st.error("Prediction: Customer is likely to churn")
     else:
         st.success("Prediction: Customer is not likely to churn")
 
     # -------------------------------------------------
-    # SHAP Explainability (FIXED)
+    # SHAP Explanation (Version-safe)
     # -------------------------------------------------
     st.subheader("Feature Importance (SHAP values)")
 
     explainer = shap.TreeExplainer(model)
+    shap_values = explainer.shap_values(input_df)
 
-    # For binary classification → use class 1 (churn)
-    shap_values = explainer.shap_values(input_df)[1]
+    # Handle different SHAP output formats
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1]
 
     fig, ax = plt.subplots(figsize=(8, 4))
     shap.summary_plot(
@@ -129,11 +131,15 @@ if st.button("Predict Churn"):
     # -------------------------------------------------
     st.subheader("SHAP Waterfall (Single Prediction)")
 
+    base_value = explainer.expected_value
+    if isinstance(base_value, list):
+        base_value = base_value[1]
+
     fig2, ax2 = plt.subplots(figsize=(8, 4))
     shap.plots.waterfall(
         shap.Explanation(
             values=shap_values[0],
-            base_values=explainer.expected_value[1],
+            base_values=base_value,
             data=input_df.iloc[0],
             feature_names=input_df.columns,
         ),
