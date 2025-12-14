@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 # -----------------------
 @st.cache_data
 def load_model():
-    with open(r"C:\Users\himan\OneDrive\Desktop\Projects\Customer_Churn_prediction\churn-streamlit-app\model\lgbm_model.pkl", "rb") as f:
+    with open("churn-streamlit-app/model/lgbm_model.pkl", "rb") as f:
         model = pickle.load(f)
-    with open(r"C:\Users\himan\OneDrive\Desktop\Projects\Customer_Churn_prediction\churn-streamlit-app\model\preprocessor.pkl", "rb") as f:
+    with open("churn-streamlit-app/model/preprocessor.pkl", "rb") as f:
         preprocessor = pickle.load(f)
     return model, preprocessor
 
